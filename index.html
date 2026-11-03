@@ -110,6 +110,13 @@ h1{font-size:clamp(24px,min(4.2svh,9vw),46px)}
 .chip{padding:1px 9px}
 .tops>span{display:none}
 .tops{justify-content:center}
+.nm{display:block;width:100%;max-width:340px}
+.nm input{width:100%;box-sizing:border-box;height:clamp(32px,4.8svh,42px);font:inherit;font-size:16px;color:var(--dark);background:#fffaf0;border:1.5px solid #c8a24d;border-radius:12px;padding:0 14px;text-align:center}
+.nm input:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.nm input.bad{border-color:#b3261e;background:#fff1ef}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.hp{position:absolute;top:0;right:0;width:1px;height:1px;opacity:0;pointer-events:none}
+@media (max-height:830px){.gallery{display:none}}
 </style>
 </head>
 <body>
@@ -137,6 +144,8 @@ h1{font-size:clamp(24px,min(4.2svh,9vw),46px)}
     </ul>
     <p class="note2">הזמנות עד יום שני בערב · חלוקה ביום חמישי</p>
     <div class="cta">
+      <label class="nm"><span class="sr">שם להזמנה</span><input id="cname" type="text" maxlength="40" autocomplete="name" placeholder="השם שלכם"></label>
+      <input class="hp" id="hp" type="text" tabindex="-1" autocomplete="off" aria-hidden="true">
       <a class="btn" id="order" href="https://wa.me/972507774699?text=%D7%94%D7%99%D7%99%20%D7%A9%D7%97%D7%A8%2C%20%D7%90%D7%A0%D7%99%20%D7%A8%D7%95%D7%A6%D7%94%20%D7%9C%D7%94%D7%96%D7%9E%D7%99%D7%9F." target="_blank" rel="noopener">להזמנה בוואטסאפ</a>
       <span class="hint">ייפתח וואטסאפ עם ההזמנה. יש ללחוץ שם על שליחה</span>
       <a class="phone" href="tel:0507774699">050-777-4699</a>
@@ -145,29 +154,39 @@ h1{font-size:clamp(24px,min(4.2svh,9vw),46px)}
 </main>
 <script>
 (function(){
+  var ORDERS_URL='https://script.google.com/macros/s/AKfycbyvMmOsLDLpqG_wFstLB9IzyyQzAHbQkaoOuaXcMgP_BQU12Zq54maS-9Tkqxyl7RfGPQ/exec';
+  var WA='https://wa.me/972507774699?text=';
   var rows=[].slice.call(document.querySelectorAll('.menu li[data-price]'));
   var totalEl=document.getElementById('total'), btn=document.getElementById('order');
+  var nameEl=document.getElementById('cname'), hpEl=document.getElementById('hp');
   var qty=rows.map(function(){return 0;});
+  var cart={items:[],lines:[],total:0};
+  function buildHref(){
+    if(cart.total<=0){ return; }
+    var nm=nameEl.value.trim();
+    var msg='היי שחר, אני רוצה להזמין:\n'+cart.lines.join('\n')+'\nסה״כ: '+cart.total+' ש״ח'+(nm?'\nשם: '+nm:'');
+    btn.href=WA+encodeURIComponent(msg);
+  }
   function render(){
-    var total=0, lines=[];
+    var total=0, lines=[], items=[];
     rows.forEach(function(r,i){
-      var q=qty[i], p=Number(r.getAttribute('data-price')), nm=r.getAttribute('data-name');
+      var q=qty[i], p=Number(r.getAttribute('data-price')), nm=r.getAttribute('data-name'), picked=[];
       var chips=[].slice.call(r.querySelectorAll('.chip'));
       if(chips.length){
-        var sel=[], none=r.querySelector('.chip.none');
+        var none=r.querySelector('.chip.none');
         chips.forEach(function(c){ if(q===0){ c.setAttribute('aria-pressed','false'); } c.disabled=(q===0); });
         if(q>0 && !chips.some(function(c){ return c.getAttribute('aria-pressed')==='true'; })){ none.setAttribute('aria-pressed','true'); }
-        chips.forEach(function(c){ if(c.getAttribute('aria-pressed')==='true'){ sel.push(c.textContent); } });
-        if(sel.length){ nm+=(none.getAttribute('aria-pressed')==='true') ? ' (ללא תוספת)' : ' (עם '+sel.join(', ')+')'; }
+        chips.forEach(function(c){ if(c.getAttribute('aria-pressed')==='true'){ picked.push(c.textContent); } });
+        if(picked.length){ nm+=(none.getAttribute('aria-pressed')==='true') ? ' (ללא תוספת)' : ' (עם '+picked.join(', ')+')'; }
       }
       r.querySelector('.q').textContent=q;
       r.classList.toggle('on',q>0);
-      if(q>0){ total+=q*p; lines.push(q+' × '+nm+' – '+(q*p)+' ש״ח'); }
+      if(q>0){ total+=q*p; lines.push(q+' × '+nm+' – '+(q*p)+' ש״ח'); items.push({name:r.getAttribute('data-name'),qty:q,toppings:picked}); }
     });
+    cart={items:items,lines:lines,total:total};
     totalEl.textContent=total+' ש״ח';
     if(total>0){
-      var msg='היי שחר, אני רוצה להזמין:\n'+lines.join('\n')+'\nסה״כ: '+total+' ש״ח';
-      btn.href='https://wa.me/972507774699?text='+encodeURIComponent(msg);
+      buildHref();
       btn.removeAttribute('aria-disabled');
       btn.textContent='שלח הזמנה';
     } else {
@@ -188,7 +207,24 @@ h1{font-size:clamp(24px,min(4.2svh,9vw),46px)}
       render();
     });
   });
-  btn.addEventListener('click',function(e){ if(btn.getAttribute('aria-disabled')==='true'){ e.preventDefault(); } });
+  nameEl.addEventListener('input',function(){ nameEl.classList.remove('bad'); nameEl.removeAttribute('aria-invalid'); buildHref(); });
+  btn.addEventListener('click',function(e){
+    if(btn.getAttribute('aria-disabled')==='true'){ e.preventDefault(); return; }
+    var nm=nameEl.value.trim();
+    if(!nm){
+      e.preventDefault();
+      nameEl.classList.add('bad'); nameEl.setAttribute('aria-invalid','true');
+      nameEl.placeholder='נא לכתוב שם להזמנה'; nameEl.focus();
+      return;
+    }
+    buildHref();
+    if(ORDERS_URL){
+      try{
+        fetch(ORDERS_URL,{method:'POST',mode:'no-cors',keepalive:true,headers:{'Content-Type':'text/plain;charset=utf-8'},
+          body:JSON.stringify({v:1,name:nm,items:cart.items,hp:hpEl.value})}).catch(function(){});
+      }catch(err){}
+    }
+  });
   render();
 })();
 </script>
