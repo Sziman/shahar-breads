@@ -117,6 +117,13 @@ h1{font-size:clamp(24px,min(4.2svh,9vw),46px)}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 .hp{position:absolute;top:0;right:0;width:1px;height:1px;opacity:0;pointer-events:none}
 @media (max-height:600px){.gallery{display:none}}
+.units{flex-basis:100%;display:grid;gap:4px;max-height:66px;overflow-y:auto;scrollbar-width:thin;padding:0 0 2px}
+.unit{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:5px;font-size:clamp(12px,1.9svh,15px);color:#5c3d2b}
+.compact .gallery{display:none}
+.units{scrollbar-width:none}
+.units::-webkit-scrollbar{display:none}
+.unit{gap:4px;font-size:clamp(11px,min(1.9svh,3.4vw),14px)}
+.unit .chip{padding:1px 7px}
 </style>
 </head>
 <body>
@@ -138,7 +145,7 @@ h1{font-size:clamp(24px,min(4.2svh,9vw),46px)}
       <li data-name="לחם הבית" data-price="28"><span class="name">לחם הבית</span><span class="dots"></span><span class="price">28 ש״ח</span><span class="qty"><button type="button" class="m" aria-label="הפחתת כמות: לחם הבית">−</button><output class="q" aria-label="כמות: לחם הבית">0</output><button type="button" class="p" aria-label="הוספת כמות: לחם הבית">+</button></span></li>
       <li data-name="לחם כוסמין" data-price="30"><span class="name">לחם כוסמין</span><span class="dots"></span><span class="price">30 ש״ח</span><span class="qty"><button type="button" class="m" aria-label="הפחתת כמות: לחם כוסמין">−</button><output class="q" aria-label="כמות: לחם כוסמין">0</output><button type="button" class="p" aria-label="הוספת כמות: לחם כוסמין">+</button></span></li>
       <li data-name="לחם אגוזים" data-price="32"><span class="name">לחם אגוזים</span><span class="dots"></span><span class="price">32 ש״ח</span><span class="qty"><button type="button" class="m" aria-label="הפחתת כמות: לחם אגוזים">−</button><output class="q" aria-label="כמות: לחם אגוזים">0</output><button type="button" class="p" aria-label="הוספת כמות: לחם אגוזים">+</button></span></li>
-      <li class="foc" data-name="פוקצ׳ה" data-price="25"><span class="name">פוקצ׳ה</span><span class="dots"></span><span class="price">25 ש״ח</span><span class="qty"><button type="button" class="m" aria-label="הפחתת כמות: פוקצ׳ה">−</button><output class="q" aria-label="כמות: פוקצ׳ה">0</output><button type="button" class="p" aria-label="הוספת כמות: פוקצ׳ה">+</button></span><div class="tops" role="group" aria-label="תוספות לפוקצ׳ה"><span>תוספות:</span><button type="button" class="chip none" aria-pressed="false" disabled>ללא תוספת</button><button type="button" class="chip" aria-pressed="false" disabled>עגבניות שרי</button><button type="button" class="chip" aria-pressed="false" disabled>פלפלים</button><button type="button" class="chip" aria-pressed="false" disabled>זיתים</button></div></li>
+      <li class="foc" data-name="פוקצ׳ה" data-price="25"><span class="name">פוקצ׳ה</span><span class="dots"></span><span class="price">25 ש״ח</span><span class="qty"><button type="button" class="m" aria-label="הפחתת כמות: פוקצ׳ה">−</button><output class="q" aria-label="כמות: פוקצ׳ה">0</output><button type="button" class="p" aria-label="הוספת כמות: פוקצ׳ה">+</button></span><div class="units"></div></li>
       <li class="total"><span class="name">סה״כ</span><span class="dots"></span><span class="price" id="total">0 ש״ח</span></li>
     </ul>
     <p class="note2">הזמנות עד יום שני בערב. איסוף ביום חמישי בערב מבית משפחת זימאן</p>
@@ -155,55 +162,82 @@ h1{font-size:clamp(24px,min(4.2svh,9vw),46px)}
 (function(){
   var ORDERS_URL='https://script.google.com/macros/s/AKfycbyvMmOsLDLpqG_wFstLB9IzyyQzAHbQkaoOuaXcMgP_BQU12Zq54maS-9Tkqxyl7RfGPQ/exec';
   var WA='https://wa.me/972507774699?text=';
+  var NONE='ללא תוספת', TOPS=['עגבניות שרי','פלפלים','זיתים'];
   var rows=[].slice.call(document.querySelectorAll('.menu li[data-price]'));
+  var focRow=document.querySelector('.menu li.foc'), unitsEl=focRow.querySelector('.units');
   var totalEl=document.getElementById('total'), btn=document.getElementById('order');
   var nameEl=document.getElementById('cname'), hpEl=document.getElementById('hp');
-  var qty=rows.map(function(){return 0;});
-  var cart={items:[],lines:[],total:0};
+  var qty=rows.map(function(){return 0;}), units=[], cart={items:[],lines:[],total:0}, focusKey=null;
+  function canon(s){ return TOPS.filter(function(t){ return s.indexOf(t)>=0; }); }
+  function toggle(u,t){
+    if(t===NONE){ units[u]=[NONE]; return; }
+    var s=units[u].filter(function(x){ return x!==NONE; }), k=s.indexOf(t);
+    if(k>=0){ s.splice(k,1); } else { s.push(t); }
+    units[u]=s.length?canon(s):[NONE];
+  }
+  function drawUnits(){
+    var st=unitsEl.scrollTop, focusBtn=null, empty=(units.length===0), n=Math.max(units.length,1);
+    unitsEl.textContent='';
+    for(let u=0;u<n;u++){
+      var row=document.createElement('div');
+      row.className='unit'; row.setAttribute('role','group');
+      row.setAttribute('aria-label','תוספות לפוקצ׳ה'+(empty?'':' '+(u+1)));
+      [NONE].concat(TOPS).forEach(function(t){
+        var b=document.createElement('button');
+        b.type='button'; b.className='chip'+(t===NONE?' none':''); b.textContent=t;
+        b.setAttribute('aria-pressed',(!empty && units[u].indexOf(t)>=0)?'true':'false');
+        b.disabled=empty;
+        if(!empty){ b.addEventListener('click',function(){ focusKey=u+'|'+t; toggle(u,t); render(); }); }
+        if(focusKey===u+'|'+t){ focusBtn=b; }
+        row.appendChild(b);
+      });
+      unitsEl.appendChild(row);
+    }
+    unitsEl.scrollTop=st;
+    if(focusBtn){ focusBtn.focus({preventScroll:true}); focusKey=null; }
+  }
+  function groupUnits(){
+    var order=[], map={};
+    units.forEach(function(s){ var k=s.join(', '); if(!(k in map)){ map[k]={sel:s,n:0}; order.push(k); } map[k].n++; });
+    return order.map(function(k){ return map[k]; });
+  }
   function buildHref(){
     if(cart.total<=0){ return; }
     var nm=nameEl.value.trim();
     var msg='היי שחר, אני רוצה להזמין:\n'+cart.lines.join('\n')+'\nסה״כ: '+cart.total+' ש״ח'+(nm?'\nשם: '+nm:'');
     btn.href=WA+encodeURIComponent(msg);
   }
+  function fit(){
+    document.body.classList.remove('compact');
+    if(document.documentElement.scrollHeight>window.innerHeight+1){ document.body.classList.add('compact'); }
+  }
   function render(){
     var total=0, lines=[], items=[];
     rows.forEach(function(r,i){
-      var q=qty[i], p=Number(r.getAttribute('data-price')), nm=r.getAttribute('data-name'), picked=[];
-      var chips=[].slice.call(r.querySelectorAll('.chip'));
-      if(chips.length){
-        var none=r.querySelector('.chip.none');
-        chips.forEach(function(c){ if(q===0){ c.setAttribute('aria-pressed','false'); } c.disabled=(q===0); });
-        if(q>0 && !chips.some(function(c){ return c.getAttribute('aria-pressed')==='true'; })){ none.setAttribute('aria-pressed','true'); }
-        chips.forEach(function(c){ if(c.getAttribute('aria-pressed')==='true'){ picked.push(c.textContent); } });
-        if(picked.length){ nm+=(none.getAttribute('aria-pressed')==='true') ? ' (ללא תוספת)' : ' (עם '+picked.join(', ')+')'; }
-      }
-      r.querySelector('.q').textContent=q;
-      r.classList.toggle('on',q>0);
-      if(q>0){ total+=q*p; lines.push(q+' × '+nm+' – '+(q*p)+' ש״ח'); items.push({name:r.getAttribute('data-name'),qty:q,toppings:picked}); }
+      var isFoc=(r===focRow), q=isFoc?units.length:qty[i], p=Number(r.getAttribute('data-price')), nm=r.getAttribute('data-name');
+      r.querySelector('.q').textContent=q; r.classList.toggle('on',q>0);
+      if(q<=0){ return; }
+      total+=q*p;
+      if(isFoc){
+        groupUnits().forEach(function(g){ lines.push(g.n+' × '+nm+' ('+(g.sel[0]===NONE?NONE:'עם '+g.sel.join(', '))+') – '+(g.n*p)+' ש״ח'); });
+        items.push({name:nm,qty:q,units:units.map(function(s){ return s.slice(); }),toppings:canon(units.reduce(function(a,s){ return a.concat(s); },[]))});
+      } else { lines.push(q+' × '+nm+' – '+(q*p)+' ש״ח'); items.push({name:nm,qty:q}); }
     });
+    drawUnits();
     cart={items:items,lines:lines,total:total};
     totalEl.textContent=total+' ש״ח';
-    if(total>0){
-      buildHref();
-      btn.removeAttribute('aria-disabled');
-      btn.textContent='שלח הזמנה';
-    } else {
-      btn.href='#';
-      btn.setAttribute('aria-disabled','true');
-      btn.textContent='בחרו לחם להזמנה';
-    }
+    if(total>0){ buildHref(); btn.removeAttribute('aria-disabled'); btn.textContent='שלח הזמנה'; }
+    else { btn.href='#'; btn.setAttribute('aria-disabled','true'); btn.textContent='בחרו לחם להזמנה'; }
+    fit();
   }
   rows.forEach(function(r,i){
-    r.querySelector('.p').addEventListener('click',function(){ if(qty[i]<20){qty[i]++; render();} });
-    r.querySelector('.m').addEventListener('click',function(){ if(qty[i]>0){qty[i]--; render();} });
-  });
-  [].slice.call(document.querySelectorAll('.chip')).forEach(function(c){
-    c.addEventListener('click',function(){
-      var row=c.closest('li'), all=[].slice.call(row.querySelectorAll('.chip')), now=c.getAttribute('aria-pressed')!=='true';
-      if(c.classList.contains('none')){ all.forEach(function(x){ x.setAttribute('aria-pressed','false'); }); c.setAttribute('aria-pressed','true'); }
-      else { row.querySelector('.chip.none').setAttribute('aria-pressed','false'); c.setAttribute('aria-pressed', now?'true':'false'); }
-      render();
+    r.querySelector('.p').addEventListener('click',function(){
+      if(r===focRow){ if(units.length<20){ units.push([NONE]); render(); } }
+      else if(qty[i]<20){ qty[i]++; render(); }
+    });
+    r.querySelector('.m').addEventListener('click',function(){
+      if(r===focRow){ if(units.length>0){ units.pop(); render(); } }
+      else if(qty[i]>0){ qty[i]--; render(); }
     });
   });
   nameEl.addEventListener('input',function(){ nameEl.classList.remove('bad'); nameEl.removeAttribute('aria-invalid'); buildHref(); });
@@ -220,10 +254,11 @@ h1{font-size:clamp(24px,min(4.2svh,9vw),46px)}
     if(ORDERS_URL){
       try{
         fetch(ORDERS_URL,{method:'POST',mode:'no-cors',keepalive:true,headers:{'Content-Type':'text/plain;charset=utf-8'},
-          body:JSON.stringify({v:1,name:nm,items:cart.items,hp:hpEl.value})}).catch(function(){});
+          body:JSON.stringify({v:2,name:nm,items:cart.items,hp:hpEl.value})}).catch(function(){});
       }catch(err){}
     }
   });
+  window.addEventListener('resize',fit);
   render();
 })();
 </script>
