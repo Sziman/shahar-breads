@@ -116,7 +116,7 @@ h1{font-size:clamp(24px,min(4.2svh,9vw),46px)}
 .nm input.bad{border-color:#b3261e;background:#fff1ef}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 .hp{position:absolute;top:0;right:0;width:1px;height:1px;opacity:0;pointer-events:none}
-@media (max-height:830px){.gallery{display:none}}
+@media (max-height:600px){.gallery{display:none}}
 </style>
 </head>
 <body>
@@ -137,12 +137,11 @@ h1{font-size:clamp(24px,min(4.2svh,9vw),46px)}
     <ul class="menu">
       <li data-name="לחם הבית" data-price="28"><span class="name">לחם הבית</span><span class="dots"></span><span class="price">28 ש״ח</span><span class="qty"><button type="button" class="m" aria-label="הפחתת כמות: לחם הבית">−</button><output class="q" aria-label="כמות: לחם הבית">0</output><button type="button" class="p" aria-label="הוספת כמות: לחם הבית">+</button></span></li>
       <li data-name="לחם כוסמין" data-price="30"><span class="name">לחם כוסמין</span><span class="dots"></span><span class="price">30 ש״ח</span><span class="qty"><button type="button" class="m" aria-label="הפחתת כמות: לחם כוסמין">−</button><output class="q" aria-label="כמות: לחם כוסמין">0</output><button type="button" class="p" aria-label="הוספת כמות: לחם כוסמין">+</button></span></li>
-      <li data-name="לחם כוסמין בשילוב חיטה מלאה" data-price="30"><span class="name">לחם כוסמין בשילוב חיטה מלאה</span><span class="dots"></span><span class="price">30 ש״ח</span><span class="qty"><button type="button" class="m" aria-label="הפחתת כמות: לחם כוסמין בשילוב חיטה מלאה">−</button><output class="q" aria-label="כמות: לחם כוסמין בשילוב חיטה מלאה">0</output><button type="button" class="p" aria-label="הוספת כמות: לחם כוסמין בשילוב חיטה מלאה">+</button></span></li>
       <li data-name="לחם אגוזים" data-price="32"><span class="name">לחם אגוזים</span><span class="dots"></span><span class="price">32 ש״ח</span><span class="qty"><button type="button" class="m" aria-label="הפחתת כמות: לחם אגוזים">−</button><output class="q" aria-label="כמות: לחם אגוזים">0</output><button type="button" class="p" aria-label="הוספת כמות: לחם אגוזים">+</button></span></li>
       <li class="foc" data-name="פוקצ׳ה" data-price="25"><span class="name">פוקצ׳ה</span><span class="dots"></span><span class="price">25 ש״ח</span><span class="qty"><button type="button" class="m" aria-label="הפחתת כמות: פוקצ׳ה">−</button><output class="q" aria-label="כמות: פוקצ׳ה">0</output><button type="button" class="p" aria-label="הוספת כמות: פוקצ׳ה">+</button></span><div class="tops" role="group" aria-label="תוספות לפוקצ׳ה"><span>תוספות:</span><button type="button" class="chip none" aria-pressed="false" disabled>ללא תוספת</button><button type="button" class="chip" aria-pressed="false" disabled>עגבניות שרי</button><button type="button" class="chip" aria-pressed="false" disabled>פלפלים</button><button type="button" class="chip" aria-pressed="false" disabled>זיתים</button></div></li>
       <li class="total"><span class="name">סה״כ</span><span class="dots"></span><span class="price" id="total">0 ש״ח</span></li>
     </ul>
-    <p class="note2">הזמנות עד יום שני בערב · חלוקה ביום חמישי</p>
+    <p class="note2">הזמנות עד יום שני בערב. איסוף ביום חמישי בערב מבית משפחת זימאן</p>
     <div class="cta">
       <label class="nm"><span class="sr">שם להזמנה</span><input id="cname" type="text" maxlength="40" autocomplete="name" placeholder="השם שלכם"></label>
       <input class="hp" id="hp" type="text" tabindex="-1" autocomplete="off" aria-hidden="true">
