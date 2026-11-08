@@ -77,6 +77,7 @@ h1{font-size:clamp(26px,4.8svh,50px)}
 .q{min-width:1.7em;text-align:center;font-family:"Suez One","Varela Round",Arial,sans-serif;font-size:clamp(17px,2.8svh,21px)}
 li.on .q{color:#b8501a}
 .note2{margin:0;font-size:clamp(13px,2.1svh,16px);color:#5c3d2b;border-top:1px solid #d8bf86;padding-top:clamp(6px,1.2svh,12px)}
+.qty button:disabled{opacity:.35;cursor:not-allowed}
 .btn[aria-disabled="true"]{opacity:.5;box-shadow:none;cursor:not-allowed;filter:grayscale(.25)}
 .menu li.foc{flex-wrap:wrap}
 .tops{flex-basis:100%;display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:0 0 2px;font-size:clamp(12px,1.9svh,15px);color:#5c3d2b}
@@ -166,8 +167,9 @@ h1{font-size:clamp(24px,min(4.2svh,9vw),46px)}
   var rows=[].slice.call(document.querySelectorAll('.menu li[data-price]'));
   var focRow=document.querySelector('.menu li.foc'), unitsEl=focRow.querySelector('.units');
   var totalEl=document.getElementById('total'), btn=document.getElementById('order');
-  var nameEl=document.getElementById('cname'), hpEl=document.getElementById('hp');
+  var nameEl=document.getElementById('cname'), hpEl=document.getElementById('hp'), badgeEl=document.querySelector('.badge');
   var qty=rows.map(function(){return 0;}), units=[], cart={items:[],lines:[],total:0}, focusKey=null;
+  var remaining=null, lastCode='';   // remaining = כמה לחמים נותרו השבוע (null = לא ידוע)
   function canon(s){ return TOPS.filter(function(t){ return s.indexOf(t)>=0; }); }
   function toggle(u,t){
     if(t===NONE){ units[u]=[NONE]; return; }
@@ -201,21 +203,29 @@ h1{font-size:clamp(24px,min(4.2svh,9vw),46px)}
     units.forEach(function(s){ var k=s.join(', '); if(!(k in map)){ map[k]={sel:s,n:0}; order.push(k); } map[k].n++; });
     return order.map(function(k){ return map[k]; });
   }
-  function buildHref(){
+  function makeCode(){ var a='ABCDEFGHJKLMNPQRSTUVWXYZ23456789', s='', i; for(i=0;i<4;i++){ s+=a.charAt(Math.floor(Math.random()*a.length)); } return s; }
+  function buildHref(code){
     if(cart.total<=0){ return; }
     var nm=nameEl.value.trim();
-    var msg='היי שחר, אני רוצה להזמין:\n'+cart.lines.join('\n')+'\nסה״כ: '+cart.total+' ש״ח'+(nm?'\nשם: '+nm:'');
+    var msg='היי שחר, אני רוצה להזמין:\n'+cart.lines.join('\n')+'\nסה״כ: '+cart.total+' ש״ח'+(nm?'\nשם: '+nm:'')+(code?'\nמס׳ הזמנה: '+code:'');
     btn.href=WA+encodeURIComponent(msg);
   }
   function fit(){
     document.body.classList.remove('compact');
     if(document.documentElement.scrollHeight>window.innerHeight+1){ document.body.classList.add('compact'); }
   }
+  function loavesInCart(){ var s=0; rows.forEach(function(r,i){ if(r!==focRow){ s+=qty[i]; } }); return s; }
   function render(){
+    if(remaining!==null){          // אם המלאי ירד בזמן שהלקוח בוחר, מקטינים את הסל כדי שלא יעבור את המכסה
+      var over=loavesInCart()-Math.max(remaining,0);
+      for(var k=rows.length-1;k>=0&&over>0;k--){ if(rows[k]===focRow){ continue; } while(qty[k]>0&&over>0){ qty[k]--; over--; } }
+    }
+    var closed=(remaining!==null && remaining<=0), loaves=loavesInCart();
     var total=0, lines=[], items=[];
     rows.forEach(function(r,i){
       var isFoc=(r===focRow), q=isFoc?units.length:qty[i], p=Number(r.getAttribute('data-price')), nm=r.getAttribute('data-name');
       r.querySelector('.q').textContent=q; r.classList.toggle('on',q>0);
+      r.querySelector('.p').disabled=closed || (isFoc ? units.length>=20 : (qty[i]>=20 || (remaining!==null && loaves>=remaining)));
       if(q<=0){ return; }
       total+=q*p;
       if(isFoc){
@@ -226,14 +236,16 @@ h1{font-size:clamp(24px,min(4.2svh,9vw),46px)}
     drawUnits();
     cart={items:items,lines:lines,total:total};
     totalEl.textContent=total+' ש״ח';
-    if(total>0){ buildHref(); btn.removeAttribute('aria-disabled'); btn.textContent='שלח הזמנה'; }
+    badgeEl.textContent = closed ? 'המלאי אזל' : (remaining!==null && remaining<=6) ? (remaining===1 ? 'נותר לחם אחד' : 'נותרו '+remaining+' לחמים') : 'המלאי מוגבל';
+    if(closed){ btn.href='#'; btn.setAttribute('aria-disabled','true'); btn.textContent='המלאי אזל'; }
+    else if(total>0){ buildHref(); btn.removeAttribute('aria-disabled'); btn.textContent='שלח הזמנה'; }
     else { btn.href='#'; btn.setAttribute('aria-disabled','true'); btn.textContent='בחרו לחם להזמנה'; }
     fit();
   }
   rows.forEach(function(r,i){
     r.querySelector('.p').addEventListener('click',function(){
       if(r===focRow){ if(units.length<20){ units.push([NONE]); render(); } }
-      else if(qty[i]<20){ qty[i]++; render(); }
+      else if(qty[i]<20 && (remaining===null || loavesInCart()<remaining)){ qty[i]++; render(); }
     });
     r.querySelector('.m').addEventListener('click',function(){
       if(r===focRow){ if(units.length>0){ units.pop(); render(); } }
@@ -250,16 +262,28 @@ h1{font-size:clamp(24px,min(4.2svh,9vw),46px)}
       nameEl.placeholder='נא לכתוב שם להזמנה'; nameEl.focus();
       return;
     }
-    buildHref();
+    var code=makeCode(); lastCode=code;
+    buildHref(code);
     if(ORDERS_URL){
       try{
         fetch(ORDERS_URL,{method:'POST',mode:'no-cors',keepalive:true,headers:{'Content-Type':'text/plain;charset=utf-8'},
-          body:JSON.stringify({v:2,name:nm,items:cart.items,hp:hpEl.value})}).catch(function(){});
+          body:JSON.stringify({v:3,name:nm,code:code,items:cart.items,hp:hpEl.value})}).catch(function(){});
       }catch(err){}
     }
   });
+  window.__stock=function(d){ if(d && typeof d.remaining==='number'){ remaining=d.remaining; render(); } };
+  function loadStock(){
+    if(!ORDERS_URL || document.hidden){ return; }
+    var s=document.createElement('script');
+    s.src=ORDERS_URL+'?cb=__stock&ex='+encodeURIComponent(lastCode)+'&t='+Date.now();
+    s.async=true;
+    s.onload=s.onerror=function(){ if(s.parentNode){ s.parentNode.removeChild(s); } };
+    document.head.appendChild(s);
+  }
   window.addEventListener('resize',fit);
-  render();
+  document.addEventListener('visibilitychange',function(){ if(!document.hidden){ loadStock(); } });
+  setInterval(loadStock,60000);
+  render(); loadStock();
 })();
 </script>
 </body>
