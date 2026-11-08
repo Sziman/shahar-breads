@@ -225,7 +225,7 @@ h1{font-size:clamp(24px,min(4.2svh,9vw),46px)}
     rows.forEach(function(r,i){
       var isFoc=(r===focRow), q=isFoc?units.length:qty[i], p=Number(r.getAttribute('data-price')), nm=r.getAttribute('data-name');
       r.querySelector('.q').textContent=q; r.classList.toggle('on',q>0);
-      r.querySelector('.p').disabled=closed || (isFoc ? units.length>=20 : (qty[i]>=20 || (remaining!==null && loaves>=remaining)));
+      r.querySelector('.p').disabled=(isFoc ? units.length>=20 : (closed || qty[i]>=20 || (remaining!==null && loaves>=remaining)));
       if(q<=0){ return; }
       total+=q*p;
       if(isFoc){
@@ -236,10 +236,9 @@ h1{font-size:clamp(24px,min(4.2svh,9vw),46px)}
     drawUnits();
     cart={items:items,lines:lines,total:total};
     totalEl.textContent=total+' ש״ח';
-    badgeEl.textContent = closed ? 'המלאי אזל' : (remaining!==null && remaining<=6) ? (remaining===1 ? 'נותר לחם אחד' : 'נותרו '+remaining+' לחמים') : 'המלאי מוגבל';
-    if(closed){ btn.href='#'; btn.setAttribute('aria-disabled','true'); btn.textContent='המלאי אזל'; }
-    else if(total>0){ buildHref(); btn.removeAttribute('aria-disabled'); btn.textContent='שלח הזמנה'; }
-    else { btn.href='#'; btn.setAttribute('aria-disabled','true'); btn.textContent='בחרו לחם להזמנה'; }
+    badgeEl.textContent = closed ? 'הלחמים אזלו' : (remaining!==null && remaining<=6) ? (remaining===1 ? 'נותר לחם אחד' : 'נותרו '+remaining+' לחמים') : 'המלאי מוגבל';
+    if(total>0){ buildHref(); btn.removeAttribute('aria-disabled'); btn.textContent='שלח הזמנה'; }
+    else { btn.href='#'; btn.setAttribute('aria-disabled','true'); btn.textContent=closed?'בחרו פוקצ׳ה להזמנה':'בחרו לחם להזמנה'; }
     fit();
   }
   rows.forEach(function(r,i){
