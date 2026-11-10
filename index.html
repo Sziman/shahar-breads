@@ -125,18 +125,6 @@ h1{font-size:clamp(24px,min(4.2svh,9vw),46px)}
 .units::-webkit-scrollbar{display:none}
 .unit{gap:4px;font-size:clamp(11px,min(1.9svh,3.4vw),14px)}
 .unit .chip{padding:1px 7px}
-.ov{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(42,22,12,.6)}
-.ov[hidden]{display:none}
-.dlg{box-sizing:border-box;width:100%;max-width:380px;max-height:calc(100svh - 32px);overflow-y:auto;background:#fffaf0;color:#3b2216;border:2px solid #c8a24d;border-radius:18px;padding:20px 18px;text-align:right;box-shadow:0 14px 40px rgba(0,0,0,.35)}
-.dlg h2{font-size:24px;margin:0 0 12px;text-align:center}
-.dl{margin:4px 0;font-size:17px;line-height:1.4}
-.dtt{font-weight:700;font-size:19px;margin-top:10px;padding-top:8px;border-top:1px solid #d8bf86}
-.dm{margin:10px 0 0;font-size:14px;color:#5c3d2b}
-.dact{display:grid;gap:8px;justify-items:center;margin-top:16px}
-button.btn{border:0;cursor:pointer}
-button.btn:disabled{opacity:.55;cursor:not-allowed;box-shadow:none}
-.linkbtn{background:none;border:0;color:#5c3d2b;text-decoration:underline;font:inherit;font-size:16px;cursor:pointer;padding:6px}
-.dlg a.btn{color:#2a160c;text-align:center}
 </style>
 </head>
 <body>
@@ -166,18 +154,11 @@ button.btn:disabled{opacity:.55;cursor:not-allowed;box-shadow:none}
       <label class="nm"><span class="sr">שם להזמנה</span><input id="cname" type="text" maxlength="40" autocomplete="name" placeholder="השם שלכם"></label>
       <input class="hp" id="hp" type="text" tabindex="-1" autocomplete="off" aria-hidden="true">
       <a class="btn" id="order" href="#">להזמנה בוואטסאפ</a>
-      <span class="hint">לפני השליחה תוצג הזמנה לאישור</span>
+      <span class="hint">ייפתח וואטסאפ עם ההזמנה. יש ללחוץ שם על שליחה</span>
       <a class="phone" href="tel:0507774699">050-777-4699</a>
     </div>
   </div>
 </main>
-<div class="ov" id="ov" hidden>
-<div class="dlg" role="dialog" aria-modal="true" aria-labelledby="dt">
-<h2 id="dt">אישור הזמנה</h2>
-<div id="dbody"></div>
-<div class="dact" id="dact"></div>
-</div>
-</div>
 <script>
 (function(){
   var ORDERS_URL='https://script.google.com/macros/s/AKfycbw_Az4rvm2aHZuBawF0OSTHEHokJLh8UG3KjhPxFDaXzjVGTr5JLcyR9HA124ZWXN96lw/exec';
@@ -187,8 +168,7 @@ button.btn:disabled{opacity:.55;cursor:not-allowed;box-shadow:none}
   var focRow=document.querySelector('.menu li.foc'), unitsEl=focRow.querySelector('.units');
   var totalEl=document.getElementById('total'), btn=document.getElementById('order');
   var nameEl=document.getElementById('cname'), hpEl=document.getElementById('hp'), badgeEl=document.querySelector('.badge'), noteEl=document.querySelector('.note2');
-  var ov=document.getElementById('ov'), dTitle=document.getElementById('dt'), dBody=document.getElementById('dbody'), dAct=document.getElementById('dact');
-  var qty=rows.map(function(){return 0;}), units=[], cart={items:[],lines:[],total:0}, focusKey=null, busy=false;
+  var qty=rows.map(function(){return 0;}), units=[], cart={items:[],lines:[],total:0}, focusKey=null;
   var remaining=null;   // כמה לחמים נותרו השבוע (null = לא ידוע)
   function canon(s){ return TOPS.filter(function(t){ return s.indexOf(t)>=0; }); }
   function toggle(u,t){
@@ -266,78 +246,29 @@ button.btn:disabled{opacity:.55;cursor:not-allowed;box-shadow:none}
   });
   nameEl.addEventListener('input',function(){ nameEl.classList.remove('bad'); nameEl.removeAttribute('aria-invalid'); });
 
-  /* ---------- חלון אישור הזמנה ---------- */
-  function mk(tag,cls,text){ var e=document.createElement(tag); if(cls){ e.className=cls; } if(text!==undefined){ e.textContent=text; } return e; }
-  function act(label,cls,fn){ var b=mk('button',cls,label); b.type='button'; b.addEventListener('click',fn); return b; }
-  function setDlg(title,body,acts){
-    dTitle.textContent=title; dBody.textContent=''; dAct.textContent='';
-    body.forEach(function(n){ dBody.appendChild(n); }); acts.forEach(function(n){ dAct.appendChild(n); });
-    ov.hidden=false;
-    var f=dAct.querySelector('button,a'); if(f){ f.focus(); }
-  }
-  function closeDlg(){ if(busy){ return; } ov.hidden=true; btn.focus(); }
-  function summary(a){
-    var n=a.lines.map(function(l){ return mk('div','dl',l); });
-    n.push(mk('div','dl dtt','סה״כ: '+a.total+' ש״ח')); n.push(mk('div','dl','שם: '+a.name));
-    return n;
-  }
-  function waLink(label,a,confirmed){
-    var msg='היי שחר, '+(confirmed?'אישרתי הזמנה באתר:':'אני רוצה להזמין:')+'\n'+a.lines.join('\n')+'\nסה״כ: '+a.total+' ש״ח\nשם: '+a.name+(a.code?'\nמס׳ הזמנה: '+a.code:'');
-    var l=mk('a','btn',label); l.href=WA+encodeURIComponent(msg); l.target='_blank'; l.rel='noopener'; return l;
-  }
-  function showReview(){
-    var a={name:nameEl.value.trim(),lines:cart.lines.slice(),total:cart.total,code:'',query:encodeOrder()};
-    setDlg('אישור הזמנה', summary(a).concat([mk('p','dm',noteEl.textContent)]),
-      [act('אישור הזמנה','btn',function(){ a.code=makeCode(); send(a); }), act('חזרה לעריכה','linkbtn',closeDlg)]);
-  }
+  /* ---------- שליחת הזמנה: נשמרת בגליון ונפתח וואטסאפ ---------- */
   function encodeOrder(){
     var q=rows.map(function(r,i){ return r===focRow ? units.length : qty[i]; }).join(',');
     var u=units.map(function(s){ return s[0]===NONE ? '0' : s.map(function(t){ return TOPS.indexOf(t)+1; }).join(''); }).join('.');
-    return 'n='+encodeURIComponent(nameEl.value.trim())+'&q='+q+'&u='+u;
-  }
-  function send(a){
-    busy=true;
-    setDlg('שולח את ההזמנה…',[mk('p','dm','רגע אחד, ההזמנה נשמרת.')],[]);
-    var cb='__ord'+Date.now(), s=document.createElement('script'), finished=false, timer;
-    function finish(res){
-      if(finished){ return; } finished=true; clearTimeout(timer); window[cb]=function(){};
-      if(s.parentNode){ s.parentNode.removeChild(s); }
-      busy=false; result(a,res);
-    }
-    window[cb]=function(d){ finish(d||{ok:false,reason:'bad'}); };
-    s.onerror=function(){ finish({ok:false,reason:'network'}); };
-    timer=setTimeout(function(){ finish({ok:false,reason:'timeout'}); },20000);
-    s.src=ORDERS_URL+'?cb='+cb+'&act=order&c='+a.code+'&'+a.query+'&hp='+encodeURIComponent(hpEl.value)+'&t='+Date.now();
-    document.head.appendChild(s);
-  }
-  function result(a,res){
-    if(res && res.ok){
-      setDlg('ההזמנה התקבלה ✓',[mk('p','dl','תודה, '+a.name+'!'),mk('p','dl','מס׳ הזמנה: '+a.code),mk('p','dm',noteEl.textContent)],
-        [waLink('שליחת עותק בוואטסאפ',a,true), act('הזמנה חדשה','linkbtn',newOrder)]);
-      loadStock(); return;
-    }
-    if(res && res.reason==='stock'){
-      remaining=res.remaining; render();
-      setDlg('אין מספיק לחמים',[mk('p','dl',res.remaining<=0?'הלחמים אזלו. אפשר עדיין להזמין פוקצ׳ות.':(res.remaining===1?'נותר רק לחם אחד':'נותרו רק '+res.remaining+' לחמים')+'. ההזמנה עודכנה, אפשר לבדוק ולשלוח שוב.')],
-        [act('חזרה לעריכה','btn',function(){ ov.hidden=true; btn.focus(); })]); return;
-    }
-    setDlg('לא הצלחנו לשמור את ההזמנה',[mk('p','dl','בדקו את החיבור לאינטרנט ונסו שוב. אפשר גם לשלוח את ההזמנה בוואטסאפ.')],
-      [act('נסו שוב','btn',function(){ send(a); }), waLink('שליחה בוואטסאפ',a,false), act('חזרה','linkbtn',closeDlg)]);
-  }
-  function newOrder(){
-    qty=rows.map(function(){return 0;}); units=[]; nameEl.value=''; ov.hidden=true; render(); btn.focus();
+    return {q:q,u:u};
   }
   btn.addEventListener('click',function(e){
-    e.preventDefault();
-    if(btn.getAttribute('aria-disabled')==='true'){ return; }
-    if(!nameEl.value.trim()){
+    if(btn.getAttribute('aria-disabled')==='true'){ e.preventDefault(); return; }
+    var nm=nameEl.value.trim();
+    if(!nm){
+      e.preventDefault();
       nameEl.classList.add('bad'); nameEl.setAttribute('aria-invalid','true');
       nameEl.placeholder='נא לכתוב שם להזמנה'; nameEl.focus();
       return;
     }
-    showReview();
+    var code=makeCode(), enc=encodeOrder();
+    var msg='היי שחר, אני רוצה להזמין:\n'+cart.lines.join('\n')+'\nסה״כ: '+cart.total+' ש״ח\nשם: '+nm+'\nמס׳ הזמנה: '+code;
+    btn.href=WA+encodeURIComponent(msg); btn.target='_blank'; btn.rel='noopener';
+    try{
+      fetch(ORDERS_URL,{method:'POST',mode:'no-cors',keepalive:true,headers:{'Content-Type':'text/plain;charset=utf-8'},
+        body:JSON.stringify({n:nm,c:code,q:enc.q,u:enc.u,hp:hpEl.value})}).catch(function(){});
+    }catch(err){}
   });
-  document.addEventListener('keydown',function(e){ if(e.key==='Escape' && !ov.hidden){ closeDlg(); } });
 
   /* ---------- בדיקת מלאי ---------- */
   window.__stock=function(d){ if(d && typeof d.remaining==='number'){ remaining=d.remaining; render(); } };
