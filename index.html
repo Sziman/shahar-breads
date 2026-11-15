@@ -179,7 +179,7 @@ button.btn{border:0;cursor:pointer}
   var ORDERS_URL='https://script.google.com/macros/s/AKfycbw_Az4rvm2aHZuBawF0OSTHEHokJLh8UG3KjhPxFDaXzjVGTr5JLcyR9HA124ZWXN96lw/exec';
   var WA='https://wa.me/972507774699?text=';
   var NONE='ללא תוספת';
-  var MENU={"products": [{"name": "לחם הבית", "price": 28, "counts": true, "options": []}, {"name": "לחם כוסמין", "price": 30, "counts": true, "options": []}, {"name": "לחם אגוזים", "price": 32, "counts": true, "options": []}, {"name": "פוקצ׳ה", "price": 25, "counts": false, "options": ["עגבניות שרי", "פלפלים", "זיתים"]}], "limit": 24, "pay": {"text": "סכום לתשלום: {סכום} ש״ח. מספר הזמנה: {קוד}. אפשר לשלם באיסוף.", "link": "", "button": "לתשלום"}};   /* ברירת מחדל. מתעדכן מהגליון (לשונית "מוצרים") */
+  var MENU={"products": [{"name": "לחם הבית", "price": 28, "counts": true, "options": []}, {"name": "לחם כוסמין", "price": 30, "counts": true, "options": []}, {"name": "לחם אגוזים", "price": 32, "counts": true, "options": []}, {"name": "פוקצ׳ה", "price": 25, "counts": false, "options": ["עגבניות שרי", "פלפלים", "זיתים"]}], "limit": 24, "pay": {"text": "תודה {שם}! סכום לתשלום: {סכום} ש״ח. מספר הזמנה: {קוד}. אפשר לשלם בביט למספר 0507774699 (ציין/י את מספר ההזמנה), או במזומן באיסוף.", "link": "", "button": "לתשלום"}};   /* ברירת מחדל. מתעדכן מהגליון (לשונית "מוצרים") */
   var remaining=null;
   var menuEl=document.getElementById('menu'), totalRow=menuEl.querySelector('li.total'), totalEl=document.getElementById('total');
   var btn=document.getElementById('order'), nameEl=document.getElementById('cname'), hpEl=document.getElementById('hp');
@@ -290,9 +290,10 @@ button.btn{border:0;cursor:pointer}
     current=a;
     var pay=MENU.pay||{}, body=[];
     body.push(mk('p','dl','לאחר שליחת ההודעה בוואטסאפ, אפשר לשלם:'));
-    body.push(mk('p','dl dtt','סכום לתשלום: '+a.total+' ש״ח'));
-    var txt=fill(pay.text,a); if(txt){ body.push(mk('p','dl',txt)); }
-    body.push(mk('p','dm','מספר הזמנה: '+a.code));
+    var hasVars=/\{(סכום|קוד)\}/.test(String(pay.text||''));
+    if(!hasVars){ body.push(mk('p','dl dtt','סכום לתשלום: '+a.total+' ש״ח')); }
+    var txt=fill(pay.text,a); if(txt){ body.push(mk('p',hasVars?'dl dtt':'dl',txt)); }
+    if(!hasVars){ body.push(mk('p','dm','מספר הזמנה: '+a.code)); }
     if(a.warn){ body.push(mk('p','dwarn',a.warn)); }
     var acts=[], link=fill(pay.link,a,true);
     if(/^https:\/\//i.test(link)){ var l=mk('a','btn',pay.button||'לתשלום'); l.href=link; l.target='_blank'; l.rel='noopener'; acts.push(l); }
