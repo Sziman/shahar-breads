@@ -161,6 +161,7 @@ button.btn{border:0;cursor:pointer}
       <li class="total"><span class="name">סה״כ</span><span class="dots"></span><span class="price" id="total">0 ש״ח</span></li>
     </ul>
     <p class="note2">הזמנות עד יום שני בערב. איסוף ביום חמישי בערב מבית משפחת זימאן</p>
+    <p class="note2" id="addnote" hidden></p>
     <div class="cta">
       <label class="nm"><span class="sr">שם להזמנה</span><input id="cname" type="text" maxlength="40" autocomplete="name" placeholder="השם שלכם"></label>
       <input class="hp" id="hp" type="text" tabindex="-1" autocomplete="off" aria-hidden="true">
@@ -182,7 +183,7 @@ button.btn{border:0;cursor:pointer}
   var ORDERS_URL='https://script.google.com/macros/s/AKfycbw_Az4rvm2aHZuBawF0OSTHEHokJLh8UG3KjhPxFDaXzjVGTr5JLcyR9HA124ZWXN96lw/exec';
   var WA='https://wa.me/972507774699?text=';
   var NONE='ללא תוספת';
-    var MENU={"products": [{"name": "לחם הבית", "price": 28, "counts": true, "options": []}, {"name": "לחם כוסמין", "price": 30, "counts": true, "options": []}, {"name": "לחם אגוזים", "price": 32, "counts": true, "options": []}, {"name": "פוקצ׳ה", "price": 25, "counts": false, "options": ["עגבניות שרי", "פלפלים", "זיתים"]}], "limit": 24, "pay": {"text": "תודה {שם}! סכום לתשלום: {סכום} ש״ח. מספר הזמנה: {קוד}. אפשר לשלם בביט למספר 0507774699 (ציין/י את מספר ההזמנה), או במזומן באיסוף.", "link": "", "button": "לתשלום"}};   /* ברירת מחדל. מתעדכן מהגליון (לשונית "מוצרים") */
+    var MENU={"products": [{"name": "לחם הבית", "price": 28, "counts": true, "options": ["אגוזים", "עגבניות מיובשות", "זיתים"], "optPrice": 4}, {"name": "לחם כוסמין", "price": 30, "counts": true, "options": []}, {"name": "פוקצ׳ה", "price": 25, "counts": false, "options": ["עגבניות שרי", "פלפלים", "זיתים"]}], "limit": 24, "pay": {"text": "תודה {שם}! סכום לתשלום: {סכום} ש״ח. מספר הזמנה: {קוד}. אפשר לשלם בביט למספר 0507774699 (ציין/י את מספר ההזמנה), או במזומן באיסוף.", "link": "", "button": "לתשלום"}};   /* ברירת מחדל. מתעדכן מהגליון (לשונית "מוצרים") */
   var remaining=null;
   var menuEl=document.getElementById('menu'), totalRow=menuEl.querySelector('li.total'), totalEl=document.getElementById('total');
   var btn=document.getElementById('order'), nameEl=document.getElementById('cname'), hpEl=document.getElementById('hp');
@@ -190,11 +191,13 @@ button.btn{border:0;cursor:pointer}
   var ov=document.getElementById('ov'), dTitle=document.getElementById('dt'), dBody=document.getElementById('dbody'), dAct=document.getElementById('dact');
   var rows=[], saved={}, cart={lines:[],items:[],total:0}, focusKey=null, current=null;
 
+  function unitPrice(p,sel){ return p.price+((sel&&sel[0]!==NONE)?(p.optPrice||0):0); }
   function qtyOf(r){ return r.hasOpt ? r.units.length : r.qty; }
   function loavesInCart(){ var s=0; rows.forEach(function(r){ if(r.p.counts){ s+=qtyOf(r); } }); return s; }
   function canon(p,s){ return p.options.filter(function(o){ return s.indexOf(o)>=0; }); }
   function toggle(r,u,t){
     if(t===NONE){ r.units[u]=[NONE]; return; }
+    if(r.p.optPrice){ r.units[u]=(r.units[u][0]===t)?[NONE]:[t]; return; }
     var s=r.units[u].filter(function(x){ return x!==NONE; }), k=s.indexOf(t);
     if(k>=0){ s.splice(k,1); } else { s.push(t); }
     r.units[u]=s.length?canon(r.p,s):[NONE];
@@ -215,7 +218,7 @@ button.btn{border:0;cursor:pointer}
       var r={p:p,hasOpt:hasOpt,qty:hasOpt?0:(s.qty||0),units:[]};
       if(hasOpt){ r.units=(s.units||[]).map(function(u){ var k=canon(p,u); return k.length?k:[NONE]; }); }
       var li=mk('li',hasOpt?'foc':'');
-      li.appendChild(mk('span','name',p.name)); li.appendChild(mk('span','dots')); li.appendChild(mk('span','price',p.price+' ש״ח'));
+      li.appendChild(mk('span','name',p.name)); li.appendChild(mk('span','dots')); r.priceEl=mk('span','price',p.price+' ש״ח'); li.appendChild(r.priceEl);
       var q=mk('span','qty'), m=mk('button','m','−'), o=mk('output','q','0'), pl=mk('button','p','+');
       m.type=pl.type='button'; m.setAttribute('aria-label','הפחתת כמות: '+p.name); pl.setAttribute('aria-label','הוספת כמות: '+p.name); o.setAttribute('aria-label','כמות: '+p.name);
       q.appendChild(m); q.appendChild(o); q.appendChild(pl); li.appendChild(q);
@@ -267,17 +270,21 @@ button.btn{border:0;cursor:pointer}
     rows.forEach(function(r){
       var q=qtyOf(r), p=r.p;
       r.out.textContent=q; r.li.classList.toggle('on',q>0);
+      if(r.hasOpt && p.optPrice){ var allT=r.units.length>0 && r.units.every(function(s3){ return s3[0]!==NONE; }); r.priceEl.textContent=(p.price+(allT?p.optPrice:0))+' ש״ח'; }
       r.plus.disabled=(q>=20 || (p.counts && remaining!==null && loaves>=remaining));
       if(r.hasOpt){ drawUnits(r); }
       if(q<=0){ return; }
-      total+=q*p.price;
+      if(!r.hasOpt){ total+=q*p.price; }
       if(r.hasOpt){
+        r.units.forEach(function(s2){ total+=unitPrice(p,s2); });
         var order=[], map={};
         r.units.forEach(function(s){ var key=s.join(', '); if(!(key in map)){ map[key]={sel:s,n:0}; order.push(key); } map[key].n++; });
-        order.forEach(function(key){ var g=map[key]; lines.push(g.n+' × '+p.name+' ('+(g.sel[0]===NONE?NONE:'עם '+g.sel.join(', '))+') – '+(g.n*p.price)+' ש״ח'); });
+        order.forEach(function(key){ var g=map[key]; lines.push(g.n+' × '+p.name+' ('+(g.sel[0]===NONE?NONE:'עם '+g.sel.join(', '))+') – '+(g.n*unitPrice(p,g.sel))+' ש״ח'); });
         items.push({name:p.name,qty:q,units:r.units.map(function(s){ return s.slice(); })});
       } else { lines.push(q+' × '+p.name+' – '+(q*p.price)+' ש״ח'); items.push({name:p.name,qty:q}); }
     });
+    var ap=MENU.products.filter(function(x){ return x.optPrice>0; });
+    var an=document.getElementById('addnote'); an.hidden=!ap.length; an.textContent=ap.length?('תוספת ללחם: '+ap[0].optPrice+' ש״ח לכיכר'):'';
     cart={lines:lines,items:items,total:total};
     totalEl.textContent=total+' ש״ח';
     badgeEl.textContent = closed ? 'הלחמים אזלו' : (remaining!==null && remaining<=6 && hasCounting) ? (remaining===1 ? 'נותר לחם אחד' : 'נותרו '+remaining+' לחמים') : 'המלאי מוגבל';
@@ -345,7 +352,7 @@ button.btn{border:0;cursor:pointer}
   /* ---------- תפריט ומלאי מהגליון ---------- */
   function applyMenu(d){
     if(!d || d.ok!==true || !d.products || !d.products.length){ return; }
-    var next={products:d.products.map(function(p){ return {name:String(p.name),price:Number(p.price),counts:!!p.counts,options:p.options||[]}; }),limit:d.limit,pay:d.pay||MENU.pay};
+    var next={products:d.products.map(function(p){ return {name:String(p.name),price:Number(p.price),counts:!!p.counts,options:p.options||[],optPrice:Number(p.optPrice)||0}; }),limit:d.limit,pay:d.pay||MENU.pay};
     var changed=JSON.stringify(next.products)!==JSON.stringify(MENU.products);
     MENU=next; remaining=(typeof d.remaining==='number')?d.remaining:remaining;
     if(changed){ buildMenu(); }
